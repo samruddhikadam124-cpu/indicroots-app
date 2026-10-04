@@ -1,0 +1,117 @@
+"""
+IndicRoots - Main Application Entrance
+Interactive Indian Heritage & History Knowledge Platform
+"""
+
+import streamlit as st
+import os
+import config
+import db
+
+# 1. Page Configuration
+st.set_page_config(
+    page_title=config.APP_TITLE,
+    page_icon=config.APP_ICON,
+    layout=config.APP_LAYOUT,
+    initial_sidebar_state="expanded"
+)
+
+# 2. Inject Custom Heritage CSS
+css_path = os.path.join(os.path.dirname(__file__), "static", "style.css")
+if os.path.exists(css_path):
+    with open(css_path, "r", encoding="utf-8") as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
+# 3. Session State Initialization
+if "current_page" not in st.session_state:
+    st.session_state.current_page = "Home"
+if "selected_topic" not in st.session_state:
+    st.session_state.selected_topic = "shivaji"
+if "history_tab" not in st.session_state:
+    st.session_state.history_tab = "Chapters"
+
+# Import Views
+from views.home import render_home
+from views.history import render_history
+from views.timeline import render_timeline
+from views.quiz import render_quiz
+from views.progress import render_progress
+from views.about import render_about
+
+# 4. Sidebar Navigation
+with st.sidebar:
+    st.markdown("""
+    <div style="text-align: center; padding: 12px 0 16px 0; border-bottom: 1px solid rgba(212, 175, 55, 0.25); margin-bottom: 16px;">
+        <div style="font-size: 2.8rem; margin-bottom: 4px;">🪷</div>
+        <div style="font-family: 'Cinzel', serif; font-size: 1.6rem; font-weight: 800; color: #FFDF73; letter-spacing: 1px;">IndicRoots</div>
+        <div style="font-size: 0.8rem; color: #D4AF37; font-style: italic;">इतिहासोऽयं सर्वप्राणिनां हितकरः</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    page_names = [name for name, icon in config.NAV_ITEMS]
+    page_icons = {name: icon for name, icon in config.NAV_ITEMS}
+
+    # Ensure current_page is valid
+    if st.session_state.current_page not in page_names:
+        st.session_state.current_page = "Home"
+
+    cur_idx = page_names.index(st.session_state.current_page)
+
+    selected_nav = st.radio(
+        "Navigation",
+        options=page_names,
+        format_func=lambda p: f"{page_icons[p]}  {p}",
+        index=cur_idx,
+        label_visibility="collapsed",
+        key="main_nav_radio"
+    )
+
+    if selected_nav != st.session_state.current_page:
+        st.session_state.current_page = selected_nav
+        st.rerun()
+
+    # Sidebar Quick Summary Box
+    st.markdown("---")
+    stats = db.get_quiz_progress_stats()
+    latest = stats["latest"]
+    latest_score_str = f"{latest['score']}/{latest['total_questions']}" if latest else "None"
+    
+    st.markdown(f"""
+    <div style="background: rgba(30, 30, 42, 0.7); border: 1px solid var(--color-card-border); border-radius: 10px; padding: 12px 14px;">
+        <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-gold-light); font-weight: 600;">Quiz Pulse</div>
+        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #DDD; margin-top: 6px;">
+            <span>Best Score:</span>
+            <strong style="color: var(--color-gold);">{stats['best_percentage']}%</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #DDD; margin-top: 2px;">
+            <span>Latest:</span>
+            <strong style="color: #FFF;">{latest_score_str}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #DDD; margin-top: 2px;">
+            <span>Attempts:</span>
+            <strong style="color: #FFF;">{stats['total_attempts']}</strong>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Footer in Sidebar
+    st.markdown("""
+    <div style="text-align: center; margin-top: 24px; font-size: 0.75rem; color: #777;">
+        IndicRoots v1.0<br>
+        100% Offline • Built with Python & Streamlit
+    </div>
+    """, unsafe_allow_html=True)
+
+# 5. Route to Selected View
+if st.session_state.current_page == "Home":
+    render_home()
+elif st.session_state.current_page == "History":
+    render_history()
+elif st.session_state.current_page == "Timeline":
+    render_timeline()
+elif st.session_state.current_page == "Quiz":
+    render_quiz()
+elif st.session_state.current_page == "Progress":
+    render_progress()
+elif st.session_state.current_page == "About":
+    render_about()
